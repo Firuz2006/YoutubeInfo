@@ -1,3 +1,8 @@
+# fly.toml app configuration file generated for youtubeinfo on 2026-02-06T23:15:55+05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
 app = 'youtubeinfo'
 primary_region = 'ams'
 
@@ -11,6 +16,7 @@ primary_region = 'ams'
   min_machines_running = 0
 
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 512

@@ -92,7 +92,7 @@ def _process_channel(cid: str, entry: dict, on_progress=None) -> ChannelInfo:
     return info
 
 
-def search_channels(query: str, max_results: int = 200, on_progress=None, max_workers: int = 4) -> list[ChannelInfo]:
+def search_channels(query: str, max_results: int = 200, on_progress=None, max_workers: int = 2) -> list[ChannelInfo]:
     search_count = min(max_results * 3, 600)
     entries = _search_videos(query, search_count)
 
