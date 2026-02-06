@@ -1,7 +1,6 @@
 import json
 
 from openai import OpenAI
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from config import OPENAI_API_KEY
 from models import AnalysisResult, ChannelInfo
@@ -10,10 +9,7 @@ SYSTEM_PROMPT = """You are an expert analyst for Higgsfield AI — a company tha
 
 Your task: for each YouTube channel provided, determine:
 1. `niche` — 1-2 word topic classification (e.g. "tech reviews", "travel vlog", "gaming", "auto", "beauty", "cooking")
-2. `why_partner_fit` — 2-3 sentences explaining why this channel would be a good partner for Higgsfield AI. Consider:
-   - How AI video tools could enhance their content workflow
-   - Their audience overlap with Higgsfield AI's target market
-   - Specific content formats that could benefit from AI generation
+2. `why_partner_fit` — MAX 25 WORDS. One concise sentence why this channel fits Higgsfield AI. Focus on their content format and how AI video tools help.
 
 Respond in the same language as the channel's content. If channel titles are in Russian, respond in Russian.
 
@@ -64,19 +60,18 @@ def _build_channel_summary(channels: list[ChannelInfo]) -> str:
 
 
 def analyze_channels(channels: list[ChannelInfo]) -> list[AnalysisResult]:
-    """Send all channels to GPT-4o-mini in a single batch and parse structured output."""
+    """Send channels to GPT-4o-mini in batches of 30 and parse structured output."""
     if not channels:
         return []
 
     client = OpenAI(api_key=OPENAI_API_KEY)
-    summary = _build_channel_summary(channels)
+    all_results: list[AnalysisResult] = []
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task("Analyzing channels with GPT-4o-mini...", total=None)
+    # Batch in groups of 30 to avoid token limits
+    batch_size = 30
+    for i in range(0, len(channels), batch_size):
+        batch = channels[i:i + batch_size]
+        summary = _build_channel_summary(batch)
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -88,8 +83,9 @@ def analyze_channels(channels: list[ChannelInfo]) -> list[AnalysisResult]:
             temperature=0.3,
         )
 
-    content = response.choices[0].message.content
-    data = json.loads(content)
-    analyses = data.get("analyses", [])
+        content = response.choices[0].message.content
+        data = json.loads(content)
+        analyses = data.get("analyses", [])
+        all_results.extend(AnalysisResult(**item) for item in analyses)
 
-    return [AnalysisResult(**item) for item in analyses]
+    return all_results

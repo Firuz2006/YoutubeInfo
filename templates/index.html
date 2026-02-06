@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Channel Discovery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e1e1e1;
+            min-height: 100vh;
+        }
+
+        .search-bar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            padding: 16px 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-bar input[type="text"] {
+            flex: 1;
+            min-width: 300px;
+            padding: 10px 16px;
+            font-size: 15px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-bar input[type="text"]:focus {
+            border-color: #ff4444;
+        }
+
+        .search-bar input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        .search-bar label {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .search-bar input[type="checkbox"] {
+            accent-color: #ff4444;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-primary {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #2a2a2a;
+            color: #ccc;
+            border: 1px solid #3a3a3a;
+        }
+
+        .status-bar {
+            padding: 12px 24px;
+            background: #141414;
+            border-bottom: 1px solid #222;
+            font-size: 13px;
+            color: #888;
+            display: none;
+        }
+
+        .status-bar.visible { display: flex; align-items: center; gap: 12px; }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top-color: #ff4444;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .results-area {
+            padding: 16px 24px;
+        }
+
+        .results-count {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            background: #1a1a1a;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #aaa;
+            border-bottom: 1px solid #2a2a2a;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #1e1e1e;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: #1a1a1a; }
+
+        td {
+            padding: 10px 14px;
+            vertical-align: top;
+        }
+
+        td.channel-name {
+            font-weight: 500;
+            color: #fff;
+            max-width: 200px;
+        }
+
+        td.channel-name a {
+            color: #ff6666;
+            text-decoration: none;
+        }
+
+        td.channel-name a:hover { text-decoration: underline; }
+
+        td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: #aaa;
+        }
+
+        td.niche {
+            color: #9b9bff;
+            white-space: nowrap;
+        }
+
+        td.fit {
+            max-width: 400px;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 24px;
+            color: #555;
+        }
+
+        .empty-state h2 {
+            font-size: 18px;
+            color: #777;
+            margin-bottom: 8px;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="search-bar">
+    <input type="text" id="query" placeholder="Search YouTube channels... (e.g. техноблогеры, travel vlog, gaming)" autofocus>
+    <label>
+        <input type="checkbox" id="skipAi"> Skip AI analysis
+    </label>
+    <div class="actions-row">
+        <button class="btn btn-primary" id="searchBtn" onclick="startSearch()">Search</button>
+        <button class="btn btn-secondary" id="csvBtn" onclick="downloadCsv()" disabled>Download CSV</button>
+    </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+    <div class="spinner" id="statusSpinner"></div>
+    <span id="statusText">Searching...</span>
+</div>
+
+<div class="results-area">
+    <div class="empty-state" id="emptyState">
+        <h2>YouTube Channel Discovery</h2>
+        <p>Enter a search query to find channels and analyze partnership fit</p>
+    </div>
+
+    <div id="resultsContainer" style="display:none;">
+        <div class="results-count" id="resultsCount"></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Channel</th>
+                        <th>Subscribers</th>
+                        <th>Avg Views</th>
+                        <th>Videos</th>
+                        <th>Niche</th>
+                        <th>Why Partner Fit</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTaskId = null;
+    let pollInterval = null;
+
+    const queryInput = document.getElementById('query');
+    const searchBtn = document.getElementById('searchBtn');
+    const csvBtn = document.getElementById('csvBtn');
+    const statusBar = document.getElementById('statusBar');
+    const statusText = document.getElementById('statusText');
+    const statusSpinner = document.getElementById('statusSpinner');
+    const emptyState = document.getElementById('emptyState');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultsCount = document.getElementById('resultsCount');
+    const tableBody = document.getElementById('tableBody');
+
+    queryInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') startSearch();
+    });
+
+    function formatNum(n) {
+        if (n === null || n === undefined) return '—';
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+        return n.toString();
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    async function startSearch() {
+        const query = queryInput.value.trim();
+        if (!query) return;
+
+        if (pollInterval) clearInterval(pollInterval);
+
+        searchBtn.disabled = true;
+        csvBtn.disabled = true;
+        statusBar.classList.add('visible');
+        statusSpinner.style.display = 'block';
+        statusText.textContent = 'Starting search...';
+        emptyState.style.display = 'none';
+        resultsContainer.style.display = 'none';
+        tableBody.innerHTML = '';
+
+        const res = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: query,
+                max_results: 200,
+                skip_ai: document.getElementById('skipAi').checked,
+            }),
+        });
+
+        const data = await res.json();
+        if (data.error) {
+            statusText.textContent = 'Error: ' + data.error;
+            statusSpinner.style.display = 'none';
+            searchBtn.disabled = false;
+            return;
+        }
+
+        currentTaskId = data.task_id;
+        pollInterval = setInterval(pollStatus, 1500);
+    }
+
+    async function pollStatus() {
+        if (!currentTaskId) return;
+
+        const res = await fetch('/api/status/' + currentTaskId);
+        const data = await res.json();
+
+        statusText.textContent = data.message || data.status;
+
+        if (data.status === 'done' || data.status === 'error') {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            statusSpinner.style.display = 'none';
+            searchBtn.disabled = false;
+
+            if (data.status === 'done' && data.results && data.results.length > 0) {
+                renderResults(data.results);
+                csvBtn.disabled = false;
+            } else if (data.status === 'done') {
+                statusText.textContent = 'No channels found.';
+            }
+        }
+    }
+
+    function renderResults(results) {
+        resultsCount.textContent = results.length + ' channels found';
+        tableBody.innerHTML = '';
+
+        results.forEach((r, i) => {
+            const ch = r.channel;
+            const a = r.analysis || {};
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="num">${i + 1}</td>
+                <td class="channel-name"><a href="${escapeHtml(ch.url)}" target="_blank" rel="noopener">${escapeHtml(ch.name)}</a></td>
+                <td class="num">${formatNum(ch.subscriber_count)}</td>
+                <td class="num">${formatNum(ch.avg_views)}</td>
+                <td class="num">${ch.video_count != null ? ch.video_count : '—'}</td>
+                <td class="niche">${escapeHtml(a.niche)}</td>
+                <td class="fit">${escapeHtml(a.why_partner_fit)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        resultsContainer.style.display = 'block';
+    }
+
+    function downloadCsv() {
+        if (!currentTaskId) return;
+        window.location.href = '/api/csv/' + currentTaskId;
+    }
+</script>
+
+</body>
+</html>
