@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(translate-doc)",
+      "Skill(translate-doc:*)",
+      "mcp__serena__write_memory",
+      "mcp__serena__find_file",
+      "mcp__acp__Write",
+      "Bash(while read dir)",
+      "Bash(do mkdir -p \"$dir\")",
+      "Bash(done)",
+      "Bash(split:*)",
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(echo:*)",
+      "Bash(dir:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "WebSearch",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:developers.google.com)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "context7",
+    "sequential-thinking",
+    "supabase",
+    "playwright",
+    "shadcn",
+    "serena"
+  ]
+}
